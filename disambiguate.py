@@ -2,6 +2,7 @@ import argparse
 import logging
 from collections import defaultdict
 
+import numpy as np
 from gensim.models import KeyedVectors
 
 class SimLex999Translator():
@@ -9,7 +10,8 @@ class SimLex999Translator():
     # containing it?
     def __init__(self):
         logging.basicConfig(
-            format="%(asctime)s: (%(lineno)s) %(levelname)s %(message)s") 
+            format="%(asctime)s: (%(lineno)s) %(levelname)s %(message)s",
+            level = logging.DEBUG) 
         self.parse_args()
         self.en_hu = {}
 
@@ -17,12 +19,15 @@ class SimLex999Translator():
         self.dicts = map(self.read_dict, self.args.dicts)
         self.embed = self.get_embed(self.args.embed)
         self.en_hu = {} 
-        # en_hu is for checking whether word are disambiguated the same way any
-        # time
+        # en_hu is for checking whether multiple occurrences of a word are
+        # disambiguated the same way
         with open(self.args.simlex) as f:
             for line in f:
                 w1, w2, tail = f.split('\t', 2)
-
+                
+    def word2mx(self, words):
+        mx = np.asarray(self.embed[word] for word in words)
+        logging.debug(mx.shape) 
 
     def parse_args(self):
         parser = argparse.ArgumentParser(
@@ -42,6 +47,7 @@ class SimLex999Translator():
         parser.add_argument(
             'embed', help='without extension',
             default='/mnt/permanent/Language/Hungarian/Embed/mnsz2_webcorp/word2vec-mnsz2-webcorp_300_w5_s0_hs0_n5_i1_m5_sgram')
+        parser.add_argument('output_filen', default='out.tsd')
         self.args = parser.parse_args() 
 
     def read_dict(self, dict_fn):
