@@ -15,12 +15,11 @@ class SimLex999Translator():
         self.parse_args()
         logging.basicConfig(format=lg_fm, level=logging.INFO,
                             filename=self.args.log_filen, filemode='w')
-        self.en_hu = {}
 
     def main(self):
         self.dicts = [self.read_dict(fn) for fn in self.args.dicts]
         self.embed = self.get_embed(self.args.embed)
-        self.en_hu = {}
+        self.en_hu = defaultdict(set)
         # en_hu is for checking whether multiple occurrences of a word are
         # disambiguated the same way
         with open(self.args.simlex) as f, open(self.args.output_filen,
@@ -39,15 +38,16 @@ class SimLex999Translator():
                     logging.warn(e)
                     continue                    
                 intersection = hus1.intersection(hus2)
-                if intersection and len(intersection) == 2: 
+                len_intersection = len(intersection)
+                if intersection and len_intersection == 2: 
                     hu1, hu2 = intersection
                 else:
                     if not intersection:
                         hus1, hus2 = (list(set_) for set_ in [hus1, hus2])
-                    elif len(intersection) == 1:
+                    elif len_intersection == 1:
                         hus1, hus2 = (list(intersection),
                                       list(hus1.symmetric_difference(hus2)))
-                    elif len(intersection) > 2:
+                    elif len_intersection > 2:
                         raise logging.warn('Three synonyms: {}'.intersection)
                     try:
                         mx1, mx2 = (self.words2mx(words) 
@@ -59,8 +59,18 @@ class SimLex999Translator():
                     logging.debug(np.array(hus1)[np.array(w1_ids)])
                     logging.debug(np.array(hus2)[np.array(w2_ids)])
                     hu1, hu2 = hus1[w1_ids[0]], hus2[w2_ids[0]]
+                self.en_hu[en1].add(hu1)
+                self.en_hu[en2].add(hu2)
                 logging.info((hu1, hu2))
-                out_f.write('{}\t{}\t{}\n'.format(hu1, hu2, tail))
+                #out_f.write('{}\t{}\t{}\n'.format(hu1, hu2, tail))
+                out_f.write('{}\t{}\t{}\t{}\t{}\n'.format(en1, en2, hu1, hu2,
+                                                          len_intersection))
+        for en in sorted(self.en_hu, key=lambda en: len(self.en_hu[en]), reverse=True):
+            hus = self.en_hu[en]
+            if len(hus) == 1:
+                break
+            else:
+                logging.debug((en, hus))
 
     def argclosest(self, mx1, mx2):
         product = mx1.dot(mx2.T)
