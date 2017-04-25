@@ -8,8 +8,6 @@ import numpy as np
 from gensim.models import KeyedVectors
 
 class SimLex999Translator():
-    # What if a word would be disambiguated differently in different pairs
-    # containing it?
     def __init__(self):
         lg_fm = "%(module)s (%(lineno)s) %(levelname)s %(message)s"
         "%(asctime)s"
@@ -39,15 +37,10 @@ class SimLex999Translator():
             default=['/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu'])
         parser.add_argument(
             '--embed', help='without extension',
-            default='/mnt/permanent/Language/Hungarian/Embed/webkorp/word2vec_n5_152_m50_w10_0l_0#')
+            default='/mnt/permanent/Language/Hungarian/Embed/mnsz2/glove-mnsz_152_m10_w3_i5')
         parser.add_argument('--oov_dict', default='oov_dict.log')
         parser.add_argument('--oov_embed', default='oov_embed.log')
         parser.add_argument('--oov_synon', default='oov_synon.log')
-            #webkorp/glove-hu_152')
-            #webkorp/webkorp_d600_w12_m250_cbow_h0_n7_i12')
-            #webkorp/webkorp_d600_w12_m250_cbow_h0_n7_i12')
-            #mnsz2_webcorp/word2vec-mnsz2-webcorp_600_w10_n5_i1_m10')
-            #word2vec-mnsz2-webcorp_300_w5_s0_hs0_n5_i1_m5_sgram')
         parser.add_argument('--output_filen', default='out.tsd')
         parser.add_argument('--log_filen', default='log.log')
         self.args = parser.parse_args()
@@ -150,7 +143,7 @@ class SimLex999Translator():
 
     def logg_ambig(self):
         """
-        This function logs the translations we used if there are more.
+        Logs the translations of ambiguous words if we used more.
         """
         for en, hus in self.en_hu.items():
             # sorted(self.en_hu, key=lambda en: len(self.en_hu[en]),
