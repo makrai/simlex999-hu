@@ -14,33 +14,35 @@ class SimLex999Translator():
         self.parse_args()
         logging.basicConfig(format=lg_fm, level=logging.INFO)
         #, filename=self.args.log_filen, filemode='w')
-        self.dicts = [self.read_dict(fn) for fn in self.args.dicts]
+        self.dict_ = self.read_dict(self.args.dict_)
         self.embed = self.get_embed(self.args.embed)
-        self.en_hu = defaultdict(set)
-        self.oov_dict, self.oov_embed, self.oov_synon = set(), set(), set()
+        self.used_translation = defaultdict(set)
+        self.oo_dict, self.oo_embed, self.o_synon = set(), set(), set()
 
     def parse_args(self):
         parser = argparse.ArgumentParser(
             description='Translates a tipically English word similarity dataset \
-            like SimLex999 to some other language using a list of dictionaries \
-            and a word embedding.  Such datasets contain word pair with a \
-            measure of semantic similarity.  Dictionaries should be specified \
-            in order of reliability, and may contain more translational \
-            equivalents for ambiguous words. In that case, we choose the \
-            translation wich is most similar to the other word in the semantic \
-            similarity pair.')
+            like SimLex999 to some other language using a dictionary and a \
+            word embedding.  Such datasets contain word pair with a measure \
+            of semantic similarity.  Dictionaries may contain more \
+            translational equivalents for ambiguous words. In that case, we \
+            choose the translation wich is most similar to the other word in \
+            the semantic similarity pair.')
         parser.add_argument(
             '--simlex', help='input word similarity dataset',
             default = '/mnt/permanent/Language/English/Data/SimLex-999/SimLex-999.txt')
         parser.add_argument(
-            '--dicts', nargs='+', help="dictionary tsv's in order of reliability",
-            default=['/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu'])
+            '--dict_', help="dictionary tsv's in order of reliability",
+            default='/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu')
         parser.add_argument(
             '--embed', help='without extension',
             default='/mnt/permanent/Language/Hungarian/Embed/mnsz2/glove-mnsz_152_m10_w3_i5')
-        parser.add_argument('--oov_dict', default='oov_dict.log')
-        parser.add_argument('--oov_embed', default='oov_embed.log')
-        parser.add_argument('--oov_synon', default='oov_synon.log')
+        parser.add_argument('--oo_dict', default='oo_dict.log')
+        parser.add_argument('--oo_embed', default='oo_embed.log')
+        parser.add_argument(
+            '--o_synon', default='o_synon.log',
+            help='Output file containing the word pairs that are synonyms \
+            that cannot be translated differently')
         parser.add_argument('--output_filen', default='out.tsd')
         parser.add_argument('--log_filen', default='log.log')
         self.args = parser.parse_args()
@@ -62,22 +64,21 @@ class SimLex999Translator():
                                                                hus2, sim)
                 except OOVException as e:
                     logging.debug((e, en1, en2, hus1, hus2))
-                    continue                    
-                self.en_hu[en1].add(hu1)
-                self.en_hu[en2].add(hu2)
+                    continue
+                self.used_translation[en1].add(hu1)
+                self.used_translation[en2].add(hu2)
                 logging.debug((hu1, hu2))
                 out_f.write('{}\t{}\t{}\t{}\t{}\n'.format(
                     en1, en2, hu1, hu2, len_intersection))
         self.logg_ambig()
-        self.logg_oov(self.oov_dict, self.args.oov_dict)
-        self.logg_oov(self.oov_embed, self.args.oov_embed)
-        self.logg_oov(self.oov_synon, self.args.oov_synon)
+        self.logg_oov(self.oo_dict, self.args.oo_dict)
+        self.logg_oov(self.oo_embed, self.args.oo_embed)
+        self.logg_oov(self.o_synon, self.args.o_synon)
 
     def translate(self, word):
-        for dict_ in self.dicts:
-            if word in dict_:
-                return dict_[word]
-        self.oov_dict.add(word)
+        if word in self.dict_:
+            return self.dict_[word]
+        self.oo_dict.add(word)
         raise(OOVException('not in dictionary: {}'.format(word)))
 
     def disambig(self, en1, en2, hus1, hus2, sim):
@@ -86,7 +87,7 @@ class SimLex999Translator():
         # two words in the similarity pair.
         intersection = hus1.intersection(hus2)
         len_intersection = len(intersection)
-        if len_intersection == 2: 
+        if len_intersection == 2:
             return list(intersection) + [len_intersection]
         elif len_intersection == 0:
             hus1, hus2 = (list(set_) for set_ in [hus1, hus2])
@@ -94,7 +95,7 @@ class SimLex999Translator():
             hus1, hus2 = (list(intersection),
                           list(hus1.symmetric_difference(hus2)))
             if not hus2:
-                self.oov_synon.add((en1, en2)) 
+                self.o_synon.add((en1, en2))
                 raise OOVException(
                     'The only translation for both {} is {}'.format(
                         (en1, en2), hus1))
@@ -107,18 +108,18 @@ class SimLex999Translator():
         return hus1[w1_ids[0]], hus2[w2_ids[0]], len_intersection
 
     def words2mx(self, words):
-        mx = np.asarray([self.embed[word] 
+        mx = np.asarray([self.embed[word]
                          for word in words if word in self.embed])
         if len(mx):
             return mx
         else:
             for word in words:
-                self.oov_embed.add(word) 
+                self.oo_embed.add(word)
             raise OOVException('not in embedding: {}'.format(
                 ' '.join(words)))
 
     def argclosest(self, mx1, mx2, sim=10):
-        product = np.absolute(mx1.dot(mx2.T) - float(sim)/10)
+        product = -mx1.dot(mx2.T)
         elems0 = np.argsort(product, axis=None)
         return [np.unravel_index(elem0, product.shape) for elem0 in elems0]
 
@@ -145,8 +146,8 @@ class SimLex999Translator():
         """
         Logs the translations of ambiguous words if we used more.
         """
-        for en, hus in self.en_hu.items():
-            # sorted(self.en_hu, key=lambda en: len(self.en_hu[en]),
+        for en, hus in self.used_translation.items():
+            # sorted(self.used_translation, key=lambda en: len(self.used_translation[en]),
             # reverse=True):
             if len(hus) != 1:
                 logging.debug((en, hus))
