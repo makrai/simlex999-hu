@@ -34,8 +34,9 @@ class SimLex999Translator():
             default = '/mnt/permanent/Language/English/Data/SimLex-999/SimLex-999.txt')
         parser.add_argument(
             '--dicts', nargs='+', help="dictionary tsv's in order of reliability",
-            default=['/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu',
-                    'supplem_dict.tsv']) 
+            default=['supplem_dict.tsv',
+                     'manual-trans-freq-word.2col',
+                     '/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu'])
         parser.add_argument(
             '--embed', help='without extension',
             default='/mnt/permanent/Language/Hungarian/Embed/mnsz2/glove-mnsz_152_m10_w3_i5')
