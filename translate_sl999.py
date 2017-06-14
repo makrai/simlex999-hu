@@ -34,7 +34,8 @@ class SimLex999Translator():
             default = '/mnt/permanent/Language/English/Data/SimLex-999/SimLex-999.txt')
         parser.add_argument(
             '--dicts', nargs='+', help="dictionary tsv's in order of reliability",
-            default=['/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu']) 
+            default=['/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu',
+                    'supplem_dict.tsv']) 
         parser.add_argument(
             '--embed', help='without extension',
             default='/mnt/permanent/Language/Hungarian/Embed/mnsz2/glove-mnsz_152_m10_w3_i5')
@@ -79,7 +80,7 @@ class SimLex999Translator():
     def translate(self, word):
         for dict_ in self.dicts:
             if word in dict_:
-                return self.dict_[word]
+                return dict_[word]
         self.oo_dict.add(word)
         raise(OOVException('not in dictionary: {}'.format(word)))
 
