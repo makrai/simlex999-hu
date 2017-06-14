@@ -14,17 +14,18 @@ class SimLex999Translator():
         self.parse_args()
         logging.basicConfig(format=lg_fm, level=logging.INFO)
         #, filename=self.args.log_filen, filemode='w')
-        self.dict_ = self.read_dict(self.args.dict_)
+        self.dicts = [self.read_dict(fn) for fn in self.args.dicts]
         self.embed = self.get_embed(self.args.embed)
         self.used_translation = defaultdict(set)
         self.oo_dict, self.oo_embed, self.o_synon = set(), set(), set()
 
     def parse_args(self):
         parser = argparse.ArgumentParser(
-            description='Translates a tipically English word similarity dataset \
-            like SimLex999 to some other language using a dictionary and a \
-            word embedding.  Such datasets contain word pair with a measure \
-            of semantic similarity.  Dictionaries may contain more \
+            description='Translates a tipically English word similarity \
+            dataset like SimLex999 to some other language using a \
+            dictionary and a word embedding.  Such datasets contain word pair \
+            with a measure of semantic similarity.  Dictionaries should be \
+            specified in order of reliability, andmay contain more \
             translational equivalents for ambiguous words. In that case, we \
             choose the translation wich is most similar to the other word in \
             the semantic similarity pair.')
@@ -32,8 +33,8 @@ class SimLex999Translator():
             '--simlex', help='input word similarity dataset',
             default = '/mnt/permanent/Language/English/Data/SimLex-999/SimLex-999.txt')
         parser.add_argument(
-            '--dict_', help="dictionary tsv's in order of reliability",
-            default='/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu')
+            '--dicts', nargs='+', help="dictionary tsv's in order of reliability",
+            default=['/mnt/store/makrai/data/language/hungarian/dict/wikt2dict-en-hu']) 
         parser.add_argument(
             '--embed', help='without extension',
             default='/mnt/permanent/Language/Hungarian/Embed/mnsz2/glove-mnsz_152_m10_w3_i5')
@@ -76,8 +77,9 @@ class SimLex999Translator():
         self.logg_oov(self.o_synon, self.args.o_synon)
 
     def translate(self, word):
-        if word in self.dict_:
-            return self.dict_[word]
+        for dict_ in self.dicts:
+            if word in dict_:
+                return self.dict_[word]
         self.oo_dict.add(word)
         raise(OOVException('not in dictionary: {}'.format(word)))
 
